@@ -1,10 +1,7 @@
 package cn.tenbit.wolf.web.core.util;
 
 import cn.tenbit.hare.core.exception.HareException;
-import cn.tenbit.hare.core.util.HareJsonUtils;
-import cn.tenbit.hare.core.util.HareObjectUtils;
-import cn.tenbit.hare.core.util.HareRandomUtils;
-import cn.tenbit.hare.core.util.HareTimeUtils;
+import cn.tenbit.hare.core.util.*;
 import cn.tenbit.wolf.soa.core.response.SoaResponse;
 import cn.tenbit.wolf.web.core.constant.WolfWebConsts;
 import cn.tenbit.wolf.web.core.model.*;
@@ -19,7 +16,9 @@ import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -152,7 +151,44 @@ public class WolfWebUtils {
     }
 
     private static SoaResponse invoke(WebContextAndResult wcar) {
-        return null;
+        WebInside inside = wcar.getInside();
+        WebRoute route = inside.getRoute();
+        return doInvoke(route.getServiceName(), route.getMethodName(), inside.getRawParam());
+    }
+
+    private static SoaResponse doInvoke(String serviceName, String methodName, Object inputParam) {
+        if (inputParam == null) {
+            HarePrintUtils.jsonConsole(HareTimeUtils.current(), "inputParam", serviceName, methodName);
+            return new SoaResponse<>();
+        }
+
+        Object bean = getService(serviceName);
+        if (bean == null) {
+            JxPrintUtils.printJsonString(JxTimeUtils.current(), "getService", serviceName, methodName, inputParam);
+            return new SoaResponse<>();
+        }
+
+        List<Object> args = new ArrayList<>();
+        Method serviceMethod = getMethodAndFillArgs(serviceName, methodName, inputParam, bean, args);
+        if (serviceMethod == null) {
+            JxPrintUtils.printJsonString(JxTimeUtils.current(), "getMethodAndFillArgs", serviceName, methodName, inputParam);
+            return new SoaResponse<>();
+        }
+
+        SoaResponse result = null;
+        try {
+            result = (SoaResponse) serviceMethod.invoke(bean, args.toArray());
+        } catch (Exception e) {
+            throw new JxWebException(JxWebErrorCode.SOA_RESPONSE_ERROR, e);
+        } finally {
+            String className = bean == null ? JxWebConsts.EMPTY_STRING : bean.getClass().getSimpleName();
+            JxPrintUtils.printJsonString(JxTimeUtils.current(), className, methodName, inputParam);
+        }
+        if (result == null) {
+            return new SoaResponse<>();
+        }
+
+        return result;
     }
 
     public static WebContextAndResult finalHandle(WebContextAndResult wcar) {
