@@ -1,5 +1,6 @@
 package cn.tenbit.wolf.web.core.controller;
 
+import cn.tenbit.hare.core.exechain.HareExecuteChain;
 import cn.tenbit.hare.core.execintercept.HareInterceptChain;
 import cn.tenbit.hare.core.util.HareObjectUtils;
 import cn.tenbit.wolf.web.core.model.WebContextAndResult;
@@ -39,6 +40,8 @@ public abstract class AbstractWolfWebController {
         }
     }
 
+    //-------------------------------------------------------------------------------------------------------------------------//
+
     private void handle(HttpServletRequest request, HttpServletResponse response,
                         String serviceKey, String methodKey) throws Exception {
 
@@ -49,34 +52,77 @@ public abstract class AbstractWolfWebController {
 
         WebContextAndResult wcar = new WebContextAndResult();
         try {
-            wcar = initHandle(request, response, serviceKey, methodKey, wcar);
-            wcar = MAIN_CHAIN.execute(wcar);
+            wcar = MAIN_CHAIN.execute(initHandle(request, response, serviceKey, methodKey, wcar));
         } catch (Throwable e) {
-            wcar = errorHandle(wcar, e);
+            wcar = ERROR_CHAIN.execute(errorHandle(wcar, e));
         } finally {
             wcar = FINAL_CHAIN.execute(wcar);
         }
     }
 
+    //-------------------------------------------------------------------------------------------------------------------------//
+
     private final HareInterceptChain<WebContextAndResult> MAIN_CHAIN = HareInterceptChain.<WebContextAndResult>newBuilder()
-            .then(this::beforeHandle)
+            .then(this::beforeDoHandle)
             .then(this::doHandle)
-            .then(this::afterHandle)
+            .then(this::afterDoHandle)
+            .build();
+
+    private final HareInterceptChain<WebContextAndResult> ERROR_CHAIN = HareInterceptChain.<WebContextAndResult>newBuilder()
             .build();
 
     private final HareInterceptChain<WebContextAndResult> FINAL_CHAIN = HareInterceptChain.<WebContextAndResult>newBuilder()
-            .then(this::lastHandle)
+            .then(this::beforeFinalHandle)
             .then(this::finalHandle)
+            .then(this::afterFinalHandle)
+            .build();
+
+    //-------------------------------------------------------------------------------------------------------------------------//
+
+    private final HareExecuteChain<WebContextAndResult> BEFORE_DO_CHAIN = HareExecuteChain.<WebContextAndResult>newBuilder()
+            .then(this::)
+            .then(this::beforeHandle)
+            .build();
+
+    private final HareExecuteChain<WebContextAndResult> AFTER_DO_CHAIN = HareExecuteChain.<WebContextAndResult>newBuilder()
+            .then(this::afterHandle)
+            .build();
+
+    private final HareExecuteChain<WebContextAndResult> BEFORE_FINAL_CHAIN = HareExecuteChain.<WebContextAndResult>newBuilder()
+            .then(this::lastHandle)
+            .build();
+
+    private final HareExecuteChain<WebContextAndResult> AFTER_FINAL_CHAIN = HareExecuteChain.<WebContextAndResult>newBuilder()
             .then(this::printHandle)
             .build();
 
-    private WebContextAndResult finalHandle(WebContextAndResult wcar) {
-        return WolfWebUtils.finalHandle(wcar);
+    //-------------------------------------------------------------------------------------------------------------------------//
+
+    private WebContextAndResult beforeDoHandle(WebContextAndResult wcar) throws Exception {
+        return BEFORE_DO_CHAIN.execute(wcar);
     }
 
     private WebContextAndResult doHandle(WebContextAndResult wcar) {
         return WolfWebUtils.doHandle(wcar);
     }
+
+    private WebContextAndResult afterDoHandle(WebContextAndResult wcar) throws Exception {
+        return AFTER_DO_CHAIN.execute(wcar);
+    }
+
+    private WebContextAndResult beforeFinalHandle(WebContextAndResult wcar) throws Exception {
+        return BEFORE_FINAL_CHAIN.execute(wcar);
+    }
+
+    private WebContextAndResult finalHandle(WebContextAndResult wcar) {
+        return WolfWebUtils.finalHandle(wcar);
+    }
+
+    private WebContextAndResult afterFinalHandle(WebContextAndResult wcar) throws Exception {
+        return AFTER_FINAL_CHAIN.execute(wcar);
+    }
+
+    //-------------------------------------------------------------------------------------------------------------------------//
 
     private WebContextAndResult printHandle(WebContextAndResult wcar) {
         return WolfWebUtils.printHandle(wcar);
@@ -92,14 +138,16 @@ public abstract class AbstractWolfWebController {
         return WolfWebUtils.initHandle(request, response, serviceKey, methodKey, wcar);
     }
 
+    //-------------------------------------------------------------------------------------------------------------------------//
+
     protected abstract boolean needDirectHandle(HttpServletRequest request, HttpServletResponse response, String serviceKey, String methodKey);
 
     protected abstract void directHandle(HttpServletRequest request, HttpServletResponse response, String serviceKey, String methodKey);
 
-    protected abstract WebContextAndResult beforeHandle(WebContextAndResult context);
+    protected abstract void beforeHandle(WebContextAndResult context);
 
-    protected abstract WebContextAndResult afterHandle(WebContextAndResult context);
+    protected abstract void afterHandle(WebContextAndResult context);
 
-    protected abstract WebContextAndResult lastHandle(WebContextAndResult context);
+    protected abstract void lastHandle(WebContextAndResult context);
 
 }

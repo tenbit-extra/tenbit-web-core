@@ -17,15 +17,19 @@ import java.io.Serializable;
 public class WebResult<T> implements Serializable {
     private static final long serialVersionUID = 8715914170739829405L;
 
-    public static final Long DEFAULT_CODE = NumberUtils.LONG_ZERO;
+    public static final Integer DEFAULT_CODE = NumberUtils.INTEGER_ZERO;
 
     public static final String DEFAULT_MESSAGE = "success";
 
-    private Long code = DEFAULT_CODE;
+    private Boolean success = Boolean.TRUE;
+
+    private Integer code = DEFAULT_CODE;
 
     private String message = DEFAULT_MESSAGE;
 
     private T data;
 
     private String timestamp;
+
+    private WebViewStatistics statistics = new WebViewStatistics();
 }
