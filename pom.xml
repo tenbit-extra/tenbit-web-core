@@ -21,7 +21,7 @@
     <packaging>jar</packaging>
 
     <properties>
-        <easyexcel.version>1.1.1</easyexcel.version>
+
     </properties>
 
     <dependencies>
@@ -34,12 +34,6 @@
         <dependency>
             <groupId>cn.tenbit.extra</groupId>
             <artifactId>tenbit-soa-core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>easyexcel</artifactId>
-            <version>${easyexcel.version}</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/javax.servlet/javax.servlet-api -->
